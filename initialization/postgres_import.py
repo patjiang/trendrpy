@@ -197,7 +197,7 @@ def insert_keywords_and_associations(cursor):
             # Add the post-keyword association
             post_keyword_associations.append((post_id, keyword))
 
-    print("Inserting keywords...")
+    print(f"Inserting {len(new_keywords)} keywords...")
     # Batch insert new keywords
     if new_keywords:
         cursor.executemany(
@@ -209,7 +209,9 @@ def insert_keywords_and_associations(cursor):
             [(kw,) for kw in new_keywords],
         )
 
-    print("Inserting post-keyword associations...")
+    print(
+        f"Inserting {len(post_keyword_associations)} post-keyword associations..."
+    )
     if post_keyword_associations:
         cursor.executemany(
             """
@@ -246,13 +248,13 @@ def execute_sql_commands():
         # script idempotent
         cursor.execute(clear_tables)
 
-        # I don't wanna deal with null values later
-        cursor.execute(assume_null_bools_false)
-
         print("Copying data from CSV files into tmp...")
         for fname in filenames:
             with open(f"{DATA_PATH}/{fname}", "r") as f:
                 cursor.copy_expert(sql.SQL(copy_data_into_tmp), f)
+
+        # I don't wanna deal with null values later
+        cursor.execute(assume_null_bools_false)
 
         print("Inserting data into subreddit table...")
         cursor.execute(insert_subreddits)

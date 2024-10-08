@@ -3,6 +3,7 @@ from psycopg2 import sql
 from pathlib import Path
 import nltk
 from tqdm import tqdm
+from io import StringIO
 
 nltk.download("stopwords")
 from nltk.corpus import stopwords
@@ -181,8 +182,8 @@ def insert_keywords_and_associations(cursor):
 
     # Cache
     existing_keywords = set()
-    new_keywords = set()
-    post_keyword_associations = []
+    new_keywords = StringIO()
+    post_keyword_associations = StringIO()
 
     for post_id, body in tqdm(
         posts, desc="Processing posts for keywords", unit="post"
@@ -191,36 +192,30 @@ def insert_keywords_and_associations(cursor):
 
         for keyword in keywords:
             if keyword not in existing_keywords:
-                new_keywords.add(keyword)
+                new_keywords.write(f"{keyword}\n")
                 existing_keywords.add(keyword)
 
-            # Add the post-keyword association
-            post_keyword_associations.append((post_id, keyword))
+            post_keyword_associations.write(f"{post_id}\t{keyword}\n")
 
-    print(f"Inserting {len(new_keywords)} keywords...")
+    new_keywords.seek(0)
+    post_keyword_associations.seek(0)
+
+    print(f"Inserting keywords...")
     # Batch insert new keywords
-    if new_keywords:
-        cursor.executemany(
-            """
-            INSERT INTO keyword (k_word)
-            VALUES (%s)
-            ON CONFLICT (k_word) DO NOTHING;
-            """,
-            [(kw,) for kw in new_keywords],
-        )
-
-    print(
-        f"Inserting {len(post_keyword_associations)} post-keyword associations..."
+    cursor.copy_expert(
+        """
+        COPY keyword (k_word) FROM STDIN WITH DELIMITER ' ';
+        """,
+        new_keywords,
     )
-    if post_keyword_associations:
-        cursor.executemany(
-            """
-            INSERT INTO post_keyword (pk_post_id, pk_word)
-            VALUES (%s, %s)
-            ON CONFLICT DO NOTHING;
-            """,
-            post_keyword_associations,
-        )
+
+    print(f"Inserting post-keyword associations...")
+    cursor.copy_expert(
+        """
+        COPY post_keyword (pk_post_id, pk_word) FROM STDIN WITH DELIMITER '\t';
+        """,
+        post_keyword_associations,
+    )
 
 
 def execute_sql_commands():

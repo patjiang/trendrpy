@@ -2,6 +2,7 @@ import psycopg2
 from psycopg2 import sql
 from pathlib import Path
 import nltk
+from tqdm import tqdm
 
 nltk.download("stopwords")
 from nltk.corpus import stopwords
@@ -175,33 +176,49 @@ def extract_keywords(body):
 
 
 def insert_keywords_and_associations(cursor):
-    # Select all posts with their IDs and non-null bodies
     cursor.execute("SELECT p_post_id, body FROM post WHERE body IS NOT NULL")
     posts = cursor.fetchall()
 
-    for post_id, body in posts:
+    # Cache
+    existing_keywords = set()
+    new_keywords = set()
+    post_keyword_associations = []
+
+    for post_id, body in tqdm(
+        posts, desc="Processing posts for keywords", unit="post"
+    ):
         keywords = extract_keywords(body)
 
         for keyword in keywords:
-            # Insert the keyword into the keyword table, ignoring duplicates
-            cursor.execute(
-                """
-                INSERT INTO keyword (k_word)
-                VALUES (%s)
-                ON CONFLICT (k_word) DO NOTHING;
-            """,
-                (keyword,),
-            )
+            if keyword not in existing_keywords:
+                new_keywords.add(keyword)
+                existing_keywords.add(keyword)
 
-            # Create an association between the post and the keyword
-            cursor.execute(
-                """
-                INSERT INTO post_keyword (pk_post_id, pk_word)
-                VALUES (%s, %s)
-                ON CONFLICT DO NOTHING;
+            # Add the post-keyword association
+            post_keyword_associations.append((post_id, keyword))
+
+    print("Inserting keywords...")
+    # Batch insert new keywords
+    if new_keywords:
+        cursor.executemany(
+            """
+            INSERT INTO keyword (k_word)
+            VALUES (%s)
+            ON CONFLICT (k_word) DO NOTHING;
             """,
-                (post_id, keyword),
-            )
+            [(kw,) for kw in new_keywords],
+        )
+
+    print("Inserting post-keyword associations...")
+    if post_keyword_associations:
+        cursor.executemany(
+            """
+            INSERT INTO post_keyword (pk_post_id, pk_word)
+            VALUES (%s, %s)
+            ON CONFLICT DO NOTHING;
+            """,
+            post_keyword_associations,
+        )
 
 
 def execute_sql_commands():
@@ -243,9 +260,6 @@ def execute_sql_commands():
         print("Inserting data into posts table...")
         cursor.execute(insert_posts)
 
-        print(
-            "Inserting keywords into keyword table and creating associations to posts in post keyword table..."
-        )
         insert_keywords_and_associations(cursor)
 
         print("Dropping the temporary table...")

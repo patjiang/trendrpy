@@ -127,7 +127,8 @@ INSERT INTO post (
         is_nsfw,
         is_bot,
         is_megathread,
-        body
+        body,
+        sentiment_score
     )
 SELECT title,
     score,
@@ -145,7 +146,8 @@ SELECT title,
     is_nsfw,
     is_bot,
     is_megathread,
-    body
+    body,
+    NULL
     FROM tmp;
 """
 
@@ -226,7 +228,21 @@ def insert_keywords_and_associations(cursor):
         """,
         post_keyword_associations,
     )
+    
+def update_sentiment_scores(cursor):
+    cursor.execute("SELECT p_post_id, title FROM post")
+    posts = cursor.fetchall()
 
+    for post_id, title in tqdm(posts, desc="Calculating sentiment scores"):
+        sentiment_score = calculate_sentiment(title)
+        cursor.execute(
+            """
+            UPDATE post
+            SET sentiment_score = %s
+            WHERE p_post_id = %s
+            """,
+            (sentiment_score, post_id),
+        )
 
 def execute_sql_commands():
     try:
@@ -246,6 +262,7 @@ def execute_sql_commands():
 
         cursor.execute(create_subreddit_table)
         cursor.execute(create_post_table)
+        cursor.execute("ALTER TABLE post ADD COLUMN IF NOT EXISTS sentiment_score FLOAT;")
         cursor.execute(create_keyword_table)
         cursor.execute(create_post_keyword_table)
 
@@ -268,6 +285,7 @@ def execute_sql_commands():
         cursor.execute(insert_posts)
 
         insert_keywords_and_associations(cursor)
+        update_sentiment_scores(cursor)
 
         print("Dropping the temporary table...")
         cursor.execute(delete_tmp)

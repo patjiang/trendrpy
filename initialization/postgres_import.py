@@ -5,9 +5,19 @@ import nltk
 from tqdm import tqdm
 from io import StringIO
 
+
 nltk.download("stopwords")
 from nltk.corpus import stopwords
 import re
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+analyzer = SentimentIntensityAnalyzer()
+
+def calculate_sentiment(text):
+    if text:
+        sentiment = analyzer.polarity_scores(text)
+        return sentiment['compound']  # Returns the overall sentiment score
+    return 0  # Default to neutral if no text
 
 DB_NAME = "trendr"
 DB_USER = ""

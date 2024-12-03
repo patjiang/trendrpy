@@ -236,8 +236,8 @@ def update_sentiment_scores(cursor):
     cursor.execute("SELECT p_post_id, body FROM post")
     posts = cursor.fetchall()
 
-    for post_id, title in tqdm(posts, desc="Calculating sentiment scores"):
-        sentiment_score = calculate_sentiment(title)
+    for post_id, body in tqdm(posts, desc="Calculating sentiment scores"):
+        sentiment_score = calculate_sentiment(body)
         cursor.execute(
             """
             UPDATE post

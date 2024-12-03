@@ -340,8 +340,6 @@ def execute_sql_commands():
             cursor.close()
         if connection:
             connection.close()
-def 
-
 
 if __name__ == "__main__":
     execute_sql_commands()

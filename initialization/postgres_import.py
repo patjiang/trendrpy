@@ -230,7 +230,7 @@ def insert_keywords_and_associations(cursor):
     )
     
 def update_sentiment_scores(cursor):
-    cursor.execute("SELECT p_post_id, title FROM post")
+    cursor.execute("SELECT p_post_id, body FROM post")
     posts = cursor.fetchall()
 
     for post_id, title in tqdm(posts, desc="Calculating sentiment scores"):

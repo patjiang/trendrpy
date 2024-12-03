@@ -323,9 +323,10 @@ def execute_sql_commands():
         update_sentiment_scores(cursor)
 
         print("Dropping the temporary table...")
-        cursor.execute("SET autovacuum = off;")
-        cursor.execute(delete_tmp)
-        cursor.execute("SET autovacuum = on;")
+        try:
+            cursor.execute(delete_tmp)
+        except Exception as e:
+            print(f"Error while dropping tmp table: {e}")
 
         output_dir = "sentiment_plots"
         Path(output_dir).mkdir(parents=True, exist_ok=True)

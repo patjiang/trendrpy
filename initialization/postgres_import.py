@@ -4,6 +4,9 @@ from pathlib import Path
 import nltk
 from tqdm import tqdm
 from io import StringIO
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
 
 
 nltk.download("stopwords")
@@ -243,6 +246,38 @@ def update_sentiment_scores(cursor):
             """,
             (sentiment_score, post_id),
         )
+def plot_sentiment_over_time(cursor, output_dir):
+    cursor.execute("""
+        SELECT created_utc, sentiment_score, subreddit
+        FROM post
+        WHERE sentiment_score IS NOT NULL
+        ORDER BY created_utc
+    """)
+    posts = cursor.fetchall()
+    df = pd.DataFrame(posts, columns=["created_utc", "sentiment_score", "subreddit"])
+
+    df['created_utc'] = pd.to_datetime(df['created_utc'], unit='s')
+
+    subreddits = df['subreddit'].unique()
+
+    for subreddit in subreddits:
+        subreddit_df = df[df['subreddit'] == subreddit]
+        daily_sentiment = subreddit_df.resample('D', on='created_utc').mean()
+
+        plt.figure(figsize=(12, 6))
+
+        plt.plot(daily_sentiment.index, daily_sentiment['sentiment_score'], label=subreddit)
+        plt.title(f"Sentiment Scores Over Time for {subreddit}")
+        plt.xlabel("Date")
+        plt.ylabel("Sentiment Score")
+        plt.legend(title="Subreddits")
+        plt.grid(True)
+        output_filepath = Path(output_dir) / f"{subreddit}_sentiment_scores.png"
+        plt.tight_layout()
+        plt.savefig(output_filepath)
+        print(f"Sentiment scores plot for '{subreddit}' saved to {output_filepath}")
+        plt.close()
+
 
 def execute_sql_commands():
     try:
@@ -292,6 +327,10 @@ def execute_sql_commands():
         cursor.execute(delete_tmp)
         cursor.execute("SET autovacuum = on;")
 
+        output_dir = "sentiment_plots"
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        plot_sentiment_over_time(cursor, output_dir)
+
     except Exception as error:
         print(f"Error: {error}")
 
@@ -301,7 +340,9 @@ def execute_sql_commands():
             cursor.close()
         if connection:
             connection.close()
+def 
 
 
 if __name__ == "__main__":
     execute_sql_commands()
+    

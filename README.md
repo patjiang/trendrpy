@@ -20,7 +20,7 @@ pip install -r requirements.txt
 # Conda install
 conda install --yes --file requirements.txt
 
-python initialization/posgres_import.py
+python initialization/postgres_import.py
 ```
 
 To access the DB manually:

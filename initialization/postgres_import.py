@@ -257,12 +257,14 @@ def plot_sentiment_over_time(cursor, output_dir):
     df = pd.DataFrame(posts, columns=["created_utc", "sentiment_score", "subreddit"])
 
     df['created_utc'] = pd.to_datetime(df['created_utc'], unit='s')
-
+    df['sentiment_score'] = pd.to_numeric(df['sentiment_score'], errors='coerce')
+    df = df.dropna(subset=['sentiment_score'])
     subreddits = df['subreddit'].unique()
 
     for subreddit in subreddits:
         subreddit_df = df[df['subreddit'] == subreddit]
         daily_sentiment = subreddit_df.resample('D', on='created_utc').mean()
+        
 
         plt.figure(figsize=(12, 6))
 

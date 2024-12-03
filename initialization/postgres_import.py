@@ -288,7 +288,9 @@ def execute_sql_commands():
         update_sentiment_scores(cursor)
 
         print("Dropping the temporary table...")
+        cursor.execute("SET autovacuum = off;")
         cursor.execute(delete_tmp)
+        cursor.execute("SET autovacuum = on;")
 
     except Exception as error:
         print(f"Error: {error}")

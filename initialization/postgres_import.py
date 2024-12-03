@@ -263,9 +263,7 @@ def plot_sentiment_over_time(cursor, output_dir):
 
     for subreddit in subreddits:
         subreddit_df = df[df['subreddit'] == subreddit]
-        daily_sentiment = subreddit_df.resample('D', on='created_utc').mean()
-        
-
+        daily_sentiment = subreddit_df.resample('D', on='created_utc')['sentiment_score'].mean()
         plt.figure(figsize=(12, 6))
 
         plt.plot(daily_sentiment.index, daily_sentiment['sentiment_score'], label=subreddit)
